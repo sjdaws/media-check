@@ -40,7 +40,7 @@ func Fetch(cfg config.Match) ([]*sources.Media, error) {
 	sections := append(cfg.Sources.Plex.Sections.Movies, cfg.Sources.Plex.Sections.TVShows...)
 
 	var result []metadata
-	orm.Raw("SELECT id, library_section_id, metadata_type, title, year FROM metadata_items WHERE parent_id IS NULL AND library_section_id IN (?) AND metadata_type IN (1,2)", sections).Scan(&result)
+	orm.Raw("SELECT id, library_section_id, metadata_type, title, year FROM metadata_items WHERE library_section_id IN (?) AND metadata_type IN (1,2)", sections).Scan(&result)
 
 	for _, row := range result {
 		item := &sources.Media{
@@ -52,7 +52,7 @@ func Fetch(cfg config.Match) ([]*sources.Media, error) {
 
 		// Get guids
 		var tags []tag
-		orm.Raw("SELECT tags.tag FROM metadata_items INNER JOIN taggings, tags ON metadata_items.id = taggings.metadata_item_id AND tags.id = taggings.tag_id WHERE metadata_items.id = ? AND metadata_items.library_section_id = ? AND tags.tag_type = 314", row.ID, row.LibrarySectionID).Scan(&tags)
+		orm.Raw("SELECT tags.tag FROM metadata_items INNER JOIN taggings, tags ON metadata_items.id = taggings.metadata_item_id AND tags.id = taggings.tag_id WHERE metadata_items.id = ? AND tags.tag_type = 314", row.ID).Scan(&tags)
 
 		for _, tagRow := range tags {
 			parts := strings.SplitN(tagRow.Tag, "://", 2)
@@ -80,7 +80,7 @@ func Fetch(cfg config.Match) ([]*sources.Media, error) {
 			id = getMetadataAncestors(orm, []int{row.ID})
 		}
 
-		orm.Raw(fmt.Sprintf("SELECT media_parts.file FROM metadata_items INNER JOIN media_parts, media_items ON media_items.metadata_item_id = metadata_items.id AND media_parts.media_item_id = media_items.id WHERE metadata_items.id %s ? AND metadata_items.library_section_id = ?", equals), id, row.LibrarySectionID).Scan(&folders)
+		orm.Raw(fmt.Sprintf("SELECT media_parts.file FROM metadata_items INNER JOIN media_parts, media_items ON media_items.metadata_item_id = metadata_items.id AND media_parts.media_item_id = media_items.id WHERE metadata_items.id %s ?", equals), id).Scan(&folders)
 
 		paths := make(map[string]string)
 

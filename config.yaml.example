@@ -1,0 +1,35 @@
+find:
+  block:
+  - "*dutch*"
+  - "*french*"
+  exceptions:
+  - /movies/French Connection*
+  paths:
+  - /movies
+  - /tvshows
+
+match:
+  exceptions:
+  - /movies/Ignore Me (1999)
+  sources:
+    plex:
+      database: /path/to/plex/com.plexapp.plugins.library.db
+      sections:
+        movies:
+        - 1
+        tvshows:
+        - 2
+    radarr:
+      apikey: 00000000000000000000000000000000
+      pathmap:
+      - "/path/to/radarr/movies:/path/to/plex/movies"
+      server: https://localhost:7878
+    sonarr:
+      apikey: 00000000000000000000000000000000
+      pathmap:
+      - "/path/to/sonarr/tvshows:/path/to/plex/tvshows"
+      server: https://localhost:8989
+
+notify:
+  urls:
+    - pushover://shoutrrr:appkey@userkey/
