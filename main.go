@@ -12,18 +12,14 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load("/config/config.yaml")
+	cfg, err := config.Load("config.yaml")
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)
 	}
 
 	notify := notifier.New(cfg.Notify.Urls)
 
-	findResult, err := finder.Check(cfg.Find)
-	if err != nil {
-		notify.Message(err.Error())
-		log.Fatal(err)
-	}
+	findResult := finder.Result{}
 
 	matchResult, err := matcher.Check(cfg.Match)
 	if err != nil {
@@ -65,7 +61,7 @@ func logResult(findResult finder.Result, matchResult matcher.Result, notify *not
 			message += "\n"
 			message += unmatched[0].Source + " | " + unmatched[1].Source + ":\n"
 			message += fmt.Sprintf(" - Title:  %s (%d) | %s (%d)\n", unmatched[0].Title, unmatched[0].Year, unmatched[1].Title, unmatched[1].Year)
-			message += " - Folder: " + unmatched[0].Folders[0] + " | " + unmatched[1].Folders[0] + "\n"
+			message += " - Folder: " + unmatched[0].Path + " | " + unmatched[1].Path + "\n"
 			message += " - IMDB:   " + unmatched[0].Guids.IMDB + " | " + unmatched[1].Guids.IMDB + "\n"
 			message += " - TMDB:   " + strconv.Itoa(unmatched[0].Guids.TMDB) + " | " + strconv.Itoa(unmatched[1].Guids.TMDB) + "\n"
 			message += " - TVDB:   " + strconv.Itoa(unmatched[0].Guids.TVDB) + " | " + strconv.Itoa(unmatched[1].Guids.TVDB) + "\n"
@@ -82,9 +78,7 @@ func logResult(findResult finder.Result, matchResult matcher.Result, notify *not
 		for _, mismatch := range matchResult.MultipleFolders {
 			message += "\n"
 			message += mismatch.Title + "\n"
-			for _, folder := range mismatch.Folders {
-				message += " - " + folder + "\n"
-			}
+			message += " - " + mismatch.Path + "\n"
 		}
 		message += "\n"
 	}
@@ -114,7 +108,13 @@ func logResult(findResult finder.Result, matchResult matcher.Result, notify *not
 				title += " (" + unmatched.Guids.IMDB + ")"
 			}
 
-			message += fmt.Sprintf("%s via %s in %s\n", title, unmatched.Source, unmatched.Folders[0])
+			message += fmt.Sprintf("%s via %s in %s", title, unmatched.Source, unmatched.Path)
+
+			if unmatched.Unmatched != "" {
+				message += fmt.Sprintf(" not found on %s", unmatched.Unmatched)
+			}
+
+			message += "\n"
 		}
 		message += "\n"
 	}

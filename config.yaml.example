@@ -9,11 +9,25 @@ find:
   - /tvshows
 
 match:
-  exceptions:
-  - /movies/Ignore Me (1999)
   sources:
+   jellyfin:
+    database: /path/to/jellyfin/library.db
+    exceptions:
+    - /movies/Ignore Me (1999)
+    paths:
+      movies:
+      - /path/to/jellyfin/movies
+      tvshows:
+      - /path/to/jellyfin/tvshows
     plex:
       database: /path/to/plex/com.plexapp.plugins.library.db
+      exceptions:
+      - /movies/Ignore Me (1999)
+      paths:
+        movies:
+        - /path/to/plex/movies
+        tvshows:
+        - /path/to/plex/tvshows
       sections:
         movies:
         - 1
@@ -21,13 +35,13 @@ match:
         - 2
     radarr:
       apikey: 00000000000000000000000000000000
-      pathmap:
-      - "/path/to/radarr/movies:/path/to/plex/movies"
+      paths:
+      - /path/to/radarr/movies
       server: https://localhost:7878
     sonarr:
       apikey: 00000000000000000000000000000000
-      pathmap:
-      - "/path/to/sonarr/tvshows:/path/to/plex/tvshows"
+      paths:
+      - /path/to/sonarr/tvshows
       server: https://localhost:8989
 
 notify:

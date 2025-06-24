@@ -3,25 +3,29 @@ package arr
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/sjdaws/media-check/internal/config"
 	"github.com/sjdaws/media-check/internal/matcher/sources"
 )
 
-func Fetch(cfg config.Match) ([]*sources.Media, error) {
-	movies, err := fetchMovies(cfg.Sources.Radarr)
+func Fetch(cfg config.Match) (*sources.Source, error) {
+	items := sources.Source{
+		Media:     make(map[string]*sources.Media),
+		Multiples: make([]*sources.Media, 0),
+	}
+
+	err := fetchMovies(cfg.Sources.Radarr, &items)
 	if err != nil {
 		return nil, err
 	}
 
-	tvshows, err := fetchTVShows(cfg.Sources.Sonarr)
+	err = fetchTVShows(cfg.Sources.Sonarr, &items)
 	if err != nil {
 		return nil, err
 	}
 
-	return append(movies, tvshows...), nil
+	return &items, nil
 }
 
 func callApi(apiKey string, endpoint string, result any) error {
@@ -55,16 +59,4 @@ func callApi(apiKey string, endpoint string, result any) error {
 	}
 
 	return nil
-}
-
-func rewriteFolder(folder string, pathmap []string) string {
-	for _, mapping := range pathmap {
-		parts := strings.SplitN(mapping, ":", 2)
-
-		if len(parts) == 2 {
-			folder = strings.Replace(folder, parts[0], parts[1], 1)
-		}
-	}
-
-	return folder
 }

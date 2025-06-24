@@ -2,6 +2,7 @@ package arr
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/sjdaws/media-check/internal/config"
 	"github.com/sjdaws/media-check/internal/matcher/sources"
@@ -22,35 +23,49 @@ type Statistics struct {
 	Episodes int `json:"episodeFileCount"`
 }
 
-func fetchTVShows(cfg config.MatchSourcesArr) ([]*sources.Media, error) {
+func fetchTVShows(cfg config.MatchSourcesArr, items *sources.Source) error {
 	var result []TVShow
+
+	if cfg.ApiKey == "" || cfg.Server == "" {
+		return nil
+	}
 
 	err := callApi(cfg.ApiKey, cfg.Server+"/api/v3/series", &result)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	shows := make([]*sources.Media, 0)
-
-	for _, show := range result {
+	for _, tvshow := range result {
 		// Ignore shows with no episodes
-		if show.Statistics.Episodes < 1 {
+		if tvshow.Statistics.Episodes < 1 {
 			continue
 		}
 
-		shows = append(shows, &sources.Media{
-			Folders: []string{rewriteFolder(show.Path, cfg.PathMap)},
+		// Get folder name
+		folder := "/tvshows/" + sources.RewriteFolder(tvshow.Path, cfg.Paths)
+		lowerFolder := strings.ToLower(folder)
+
+		media := &sources.Media{
 			Guids: sources.Guids{
-				IMDB: show.IMDBID,
-				TMDB: show.TMDBID,
-				TVDB: show.TVDBID,
+				IMDB: tvshow.IMDBID,
+				TMDB: tvshow.TMDBID,
+				TVDB: tvshow.TVDBID,
 			},
-			ID:     strconv.Itoa(show.ID),
+			ID:     strconv.Itoa(tvshow.ID),
+			Path:   folder,
 			Source: "sonarr",
-			Title:  show.Title,
-			Year:   show.Year,
-		})
+			Title:  tvshow.Title,
+			Year:   tvshow.Year,
+		}
+
+		if _, ok := items.Media[lowerFolder]; ok {
+			items.Multiples = append(items.Multiples, media)
+
+			continue
+		}
+
+		items.Media[lowerFolder] = media
 	}
 
-	return shows, nil
+	return nil
 }

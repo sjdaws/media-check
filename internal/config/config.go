@@ -22,19 +22,27 @@ type Find struct {
 }
 
 type Match struct {
-	Exceptions []string     `yaml:"exceptions"`
-	Sources    MatchSources `yaml:"sources"`
+	Sources MatchSources `yaml:"sources"`
 }
 
 type MatchSources struct {
-	Plex   MatchSourcesPlex `yaml:"plex"`
-	Radarr MatchSourcesArr  `yaml:"radarr"`
-	Sonarr MatchSourcesArr  `yaml:"sonarr"`
+	Jellyfin MatchSourcesJellyfin `yaml:"jellyfin"`
+	Plex     MatchSourcesPlex     `yaml:"plex"`
+	Radarr   MatchSourcesArr      `yaml:"radarr"`
+	Sonarr   MatchSourcesArr      `yaml:"sonarr"`
+}
+
+type MatchSourcesJellyfin struct {
+	Database   string   `yaml:"database"`
+	Exceptions []string `yaml:"exceptions"`
+	Paths      Paths    `yaml:"paths"`
 }
 
 type MatchSourcesPlex struct {
-	Database string                   `yaml:"database"`
-	Sections MatchSourcesPlexSections `yaml:"sections"`
+	Database   string                   `yaml:"database"`
+	Exceptions []string                 `yaml:"exceptions"`
+	Paths      Paths                    `yaml:"paths"`
+	Sections   MatchSourcesPlexSections `yaml:"sections"`
 }
 
 type MatchSourcesPlexSections struct {
@@ -43,13 +51,18 @@ type MatchSourcesPlexSections struct {
 }
 
 type MatchSourcesArr struct {
-	ApiKey  string   `yaml:"apikey"`
-	PathMap []string `yaml:"pathmap"`
-	Server  string   `yaml:"server"`
+	ApiKey string   `yaml:"apikey"`
+	Paths  []string `yaml:"paths"`
+	Server string   `yaml:"server"`
 }
 
 type Notify struct {
 	Urls []string `yaml:"urls"`
+}
+
+type Paths struct {
+	Movies  []string `yaml:"movies"`
+	TVShows []string `yaml:"tvshows"`
 }
 
 func Load(filename string) (Config, error) {

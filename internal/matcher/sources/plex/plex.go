@@ -13,10 +13,6 @@ import (
 	"github.com/sjdaws/media-check/internal/matcher/sources"
 )
 
-type folder struct {
-	File string
-}
-
 type metadata struct {
 	ID               int
 	LibrarySectionID int
@@ -25,25 +21,36 @@ type metadata struct {
 	Year             int
 }
 
+type path struct {
+	File string
+}
+
 type tag struct {
 	Tag string
 }
 
-func Fetch(cfg config.Match) ([]*sources.Media, error) {
-	items := make([]*sources.Media, 0)
+func Fetch(cfg config.MatchSourcesPlex) (*sources.Source, error) {
+	items := &sources.Source{
+		Media:     make(map[string]*sources.Media),
+		Multiples: make([]*sources.Media, 0),
+	}
 
-	orm, err := gorm.Open(sqlite.Open(cfg.Sources.Plex.Database), &gorm.Config{})
+	if cfg.Database == "" {
+		return items, nil
+	}
+
+	orm, err := gorm.Open(sqlite.Open(cfg.Database), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	sections := append(cfg.Sources.Plex.Sections.Movies, cfg.Sources.Plex.Sections.TVShows...)
+	sections := append(cfg.Sections.Movies, cfg.Sections.TVShows...)
 
 	var result []metadata
 	orm.Raw("SELECT id, library_section_id, metadata_type, title, year FROM metadata_items WHERE library_section_id IN (?) AND metadata_type IN (1,2)", sections).Scan(&result)
 
 	for _, row := range result {
-		item := &sources.Media{
+		media := &sources.Media{
 			ID:     strconv.Itoa(row.ID),
 			Source: "plex",
 			Title:  row.Title,
@@ -58,18 +65,18 @@ func Fetch(cfg config.Match) ([]*sources.Media, error) {
 			parts := strings.SplitN(tagRow.Tag, "://", 2)
 			switch strings.ToLower(parts[0]) {
 			case "imdb":
-				item.Guids.IMDB = parts[1]
+				media.Guids.IMDB = parts[1]
 			case "tmdb":
 				i, _ := strconv.Atoi(parts[1])
-				item.Guids.TMDB = i
+				media.Guids.TMDB = i
 			case "tvdb":
 				i, _ := strconv.Atoi(parts[1])
-				item.Guids.TVDB = i
+				media.Guids.TVDB = i
 			}
 		}
 
 		// Get folders
-		var folders []folder
+		var paths []path
 		var id any
 
 		equals := "="
@@ -80,27 +87,28 @@ func Fetch(cfg config.Match) ([]*sources.Media, error) {
 			id = getMetadataAncestors(orm, []int{row.ID})
 		}
 
-		orm.Raw(fmt.Sprintf("SELECT media_parts.file FROM metadata_items INNER JOIN media_parts, media_items ON media_items.metadata_item_id = metadata_items.id AND media_parts.media_item_id = media_items.id WHERE metadata_items.id %s ?", equals), id).Scan(&folders)
+		orm.Raw(fmt.Sprintf("SELECT media_parts.file FROM metadata_items INNER JOIN media_parts, media_items ON media_items.metadata_item_id = metadata_items.id AND media_parts.media_item_id = media_items.id WHERE metadata_items.id %s ?", equals), id).Scan(&paths)
 
-		paths := make(map[string]string)
+		known := make(map[string]string)
 
-		for _, folderRow := range folders {
-			path := filepath.Dir(folderRow.File)
-
-			// Double de-dir tv libraries to remove season folders
-			if row.MetadataType == 2 {
-				path = filepath.Dir(path)
-			}
+		for _, folderRow := range paths {
+			folder := getFolder(cfg, filepath.Dir(folderRow.File), row.MetadataType == 1)
+			lowerFolder := strings.ToLower(folder)
 
 			// Only capture paths once
-			_, known := paths[path]
-			if !known {
-				paths[path] = path
-				item.Folders = append(item.Folders, path)
+			_, ok := known[lowerFolder]
+			if !ok {
+				known[lowerFolder] = folder
+
+				if _, ok = items.Media[lowerFolder]; ok {
+					items.Multiples = append(items.Multiples, media)
+
+					continue
+				}
+
+				items.Media[lowerFolder] = media
 			}
 		}
-
-		items = append(items, item)
 	}
 
 	return items, nil
@@ -115,4 +123,13 @@ func getMetadataAncestors(orm *gorm.DB, parents []int) []int {
 	}
 
 	return append(parents, getMetadataAncestors(orm, children)...)
+}
+
+func getFolder(cfg config.MatchSourcesPlex, path string, movie bool) string {
+	if movie {
+		return "/movies/" + sources.RewriteFolder(path, cfg.Paths.Movies)
+	}
+
+	// Double de-dir tv libraries to remove season folders
+	return "/tvshows/" + sources.RewriteFolder(filepath.Dir(path), cfg.Paths.TVShows)
 }
