@@ -92,13 +92,13 @@ func Fetch(cfg config.MatchSourcesPlex) (*sources.Source, error) {
 		known := make(map[string]string)
 
 		for _, folderRow := range paths {
-			folder := getFolder(cfg, filepath.Dir(folderRow.File), row.MetadataType == 1)
-			lowerFolder := strings.ToLower(folder)
+			media.Path = getFolder(cfg, filepath.Dir(folderRow.File), row.MetadataType == 1)
+			lowerFolder := strings.ToLower(media.Path)
 
 			// Only capture paths once
 			_, ok := known[lowerFolder]
 			if !ok {
-				known[lowerFolder] = folder
+				known[lowerFolder] = media.Path
 
 				if _, ok = items.Media[lowerFolder]; ok {
 					items.Multiples = append(items.Multiples, media)
